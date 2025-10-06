@@ -18,12 +18,24 @@ body, html {
     perspective: 1000px;
 }
 #quantum-cloud-ascii {
+    position: relative;
+    display: inline-block;
+    transform-style: preserve-3d;
+    animation: quantumTunneling 5s infinite alternate;
+}
+
+.volume-slice {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    transform-style: preserve-3d;
     font-size: 4px;
     line-height: 4px;
     white-space: pre;
     text-align: center;
-    transform-style: preserve-3d;
-    animation: quantumTunneling 5s infinite alternate;
+    opacity: 0.6;
+    pointer-events: none;
 }
 @keyframes quantumTunneling {
     0% { transform: rotateX(0deg) rotateY(0deg) scale(1) skew(0deg); }
@@ -48,6 +60,23 @@ body, html {
     background: rgba(255,255,255,0.1);
     padding: 10px;
     border-radius: 10px;
+}
+
+#controls label {
+    display: block;
+    font-size: 14px;
+    margin-bottom: 4px;
+}
+
+#controls select {
+    background: rgba(75, 0, 130, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: #ffffff;
+    padding: 6px;
+    border-radius: 5px;
+    font-size: 14px;
+    margin-bottom: 10px;
+    width: 100%;
 }
 button {
     background: #4b0082;
@@ -84,7 +113,7 @@ button:hover {
 </head>
 <body>
 <div id="quantum-cloud-container">
-    <pre id="quantum-cloud-ascii"></pre>
+    <div id="quantum-cloud-ascii"></div>
 </div>
 
 <div id="tunneling-effect"></div>
@@ -107,7 +136,13 @@ button:hover {
 </div>
 
 <div id="controls">
-    <button onclick="toggleSuperposition()">Toggle Superposition</button>
+    <label for="slice-orientation">Slice Orientation</label>
+    <select id="slice-orientation">
+        <option value="axial">Axial</option>
+        <option value="coronal">Coronal</option>
+        <option value="sagittal">Sagittal</option>
+    </select>
+    <button id="superposition-toggle" onclick="toggleSuperposition()">Toggle Superposition</button>
     <button onclick="initiateQuantumTunneling()">Reseed Life</button>
     <button onclick="collapseWaveFunction()">Collapse Wave Function</button>
 </div>
@@ -115,8 +150,17 @@ button:hover {
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     const cloudAscii = document.getElementById('quantum-cloud-ascii');
-    const controls = document.getElementById('controls');
-    const superpositionButton = controls.querySelector('button:nth-child(1)');
+    const superpositionButton = document.getElementById('superposition-toggle');
+    const sliceOrientationSelect = document.getElementById('slice-orientation');
+
+    const sliceCount = 12;
+    const sliceSpacing = 18;
+    const slices = Array.from({ length: sliceCount }, () => {
+        const slice = document.createElement('pre');
+        slice.className = 'volume-slice';
+        cloudAscii.appendChild(slice);
+        return slice;
+    });
 
     const width = 80;
     const height = 40;
@@ -124,6 +168,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let lastFrameTime = 0;
     let superpositionActive = false;
     let running = true;
+    let orientation = sliceOrientationSelect.value;
 
     const createGrid = () => Array.from({ length: height }, () => Array(width).fill(false));
 
@@ -141,6 +186,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let currentGrid = createGrid();
     let bufferGrid = createGrid();
+    let volumeHistory = [];
+
+    function cloneGrid(grid) {
+        return grid.map(row => [...row]);
+    }
+
+    function resetVolumeHistory(baseGrid) {
+        volumeHistory = Array.from({ length: sliceCount }, () => cloneGrid(baseGrid));
+    }
 
     function randomizeGrid(density = 0.4) {
         for (let y = 0; y < height; y++) {
@@ -148,6 +202,104 @@ document.addEventListener('DOMContentLoaded', () => {
                 currentGrid[y][x] = islandMask[y][x] && Math.random() < density;
             }
         }
+        resetVolumeHistory(currentGrid);
+    }
+
+    function updateVolumeHistory() {
+        volumeHistory.push(cloneGrid(currentGrid));
+        if (volumeHistory.length > sliceCount) {
+            volumeHistory.shift();
+        }
+    }
+
+    function gridToAscii(grid) {
+        return grid.map((row, y) => {
+            return row.map((cell, x) => {
+                if (!islandMask[y][x]) {
+                    return '.';
+                }
+                return cell ? '#' : ' ';
+            }).join('');
+        }).join('\\n');
+    }
+
+    function getSliceContent(index) {
+        if (!volumeHistory.length) {
+            return gridToAscii(currentGrid);
+        }
+
+        const depthSpan = Math.max(sliceCount - 1, 1);
+
+        if (orientation === 'axial') {
+            const depthIndex = Math.min(index, volumeHistory.length - 1);
+            const sliceGrid = volumeHistory[depthIndex] || volumeHistory[volumeHistory.length - 1];
+            return gridToAscii(sliceGrid);
+        }
+
+        if (orientation === 'coronal') {
+            const yPosition = Math.floor((index / depthSpan) * (height - 1));
+            return volumeHistory.map(slice => {
+                const row = slice[yPosition] || [];
+                return row.map((cell, x) => {
+                    if (!islandMask[yPosition][x]) {
+                        return '.';
+                    }
+                    return cell ? '#' : ' ';
+                }).join('');
+            }).join('\\n');
+        }
+
+        const xPosition = Math.floor((index / depthSpan) * (width - 1));
+        return volumeHistory.map(slice => {
+            return slice.map((row, y) => {
+                if (!islandMask[y][xPosition]) {
+                    return '.';
+                }
+                return row[xPosition] ? '#' : ' ';
+            }).join('');
+        }).join('\\n');
+    }
+
+    function renderSlices() {
+        if (!volumeHistory.length) {
+            const placeholder = gridToAscii(currentGrid);
+            slices.forEach(slice => {
+                slice.textContent = placeholder;
+            });
+            return;
+        }
+
+        slices.forEach((slice, index) => {
+            slice.textContent = getSliceContent(index);
+        });
+    }
+
+    function positionSlices() {
+        const midPoint = (sliceCount - 1) / 2;
+        const depthSpan = Math.max(sliceCount - 1, 1);
+        cloudAscii.dataset.orientation = orientation;
+
+        slices.forEach((slice, index) => {
+            const depth = (index - midPoint) * sliceSpacing;
+            let transform = 'translate(-50%, -50%) ';
+
+            if (orientation === 'axial') {
+                transform += `translateZ(${depth}px)`;
+            } else if (orientation === 'coronal') {
+                transform += `rotateY(90deg) translateZ(${depth}px)`;
+            } else {
+                transform += `rotateX(90deg) translateZ(${depth}px)`;
+            }
+
+            slice.style.transform = transform;
+            slice.style.opacity = 0.35 + (index / depthSpan) * 0.65;
+        });
+    }
+
+    function renderGrid() {
+        updateVolumeHistory();
+        renderSlices();
+        positionSlices();
     }
 
     function stepSimulation() {
@@ -188,19 +340,6 @@ document.addEventListener('DOMContentLoaded', () => {
         bufferGrid = temp;
     }
 
-    function renderGrid() {
-        const lines = currentGrid.map((row, y) => {
-            return row.map((cell, x) => {
-                if (!islandMask[y][x]) {
-                    return '.';
-                }
-                return cell ? '#' : ' ';
-            }).join('');
-        }).join('\n');
-
-        cloudAscii.textContent = lines;
-    }
-
     function frameLoop(timestamp) {
         if (running) {
             if (!lastFrameTime || timestamp - lastFrameTime >= stepInterval) {
@@ -215,6 +354,12 @@ document.addEventListener('DOMContentLoaded', () => {
     randomizeGrid();
     renderGrid();
     requestAnimationFrame(frameLoop);
+
+    sliceOrientationSelect.addEventListener('change', (event) => {
+        orientation = event.target.value;
+        renderSlices();
+        positionSlices();
+    });
 
     window.toggleSuperposition = () => {
         superpositionActive = !superpositionActive;
@@ -241,6 +386,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 currentGrid[y][x] = false;
             }
         }
+        resetVolumeHistory(currentGrid);
         renderGrid();
         cloudAscii.style.animation = 'quantumTunneling 5s infinite alternate';
         superpositionButton.textContent = 'Toggle Superposition';
