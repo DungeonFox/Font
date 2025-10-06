@@ -1,9 +1,9 @@
 <html><head>
 <style>
-body, html { 
-    margin: 0; 
-    padding: 0; 
-    height: 100%; 
+body, html {
+    margin: 0;
+    padding: 0;
+    height: 100%;
     background: linear-gradient(to bottom, #000000, #1a0033);
     color: #ffffff;
     font-family: 'Courier New', monospace;
@@ -18,12 +18,41 @@ body, html {
     perspective: 1000px;
 }
 #quantum-cloud-ascii {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px;
+    justify-content: center;
+    align-items: stretch;
+    padding: 20px;
+    transform-style: preserve-3d;
+    animation: quantumTunneling 5s infinite alternate;
+}
+.ascii-slice-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 14px 18px;
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(3px);
+    min-width: 200px;
+}
+.slice-label {
+    font-size: 14px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    color: #a0e9ff;
+}
+.ascii-slice {
     font-size: 4px;
     line-height: 4px;
     white-space: pre;
     text-align: center;
-    transform-style: preserve-3d;
-    animation: quantumTunneling 5s infinite alternate;
+    margin: 0;
+    color: #ffffff;
 }
 @keyframes quantumTunneling {
     0% { transform: rotateX(0deg) rotateY(0deg) scale(1) skew(0deg); }
@@ -92,53 +121,20 @@ button:hover {
 </head>
 <body>
 <div id="quantum-cloud-container">
-    <pre id="quantum-cloud-ascii">
-.      .     .    .-~~~-.
-  .     .    - ~ ~-(   .   )_ _
-       . /         .  .       ~ - 
-  .    .|              .      ..   \
- .   .  .\    .      .        . .   '
-           ~-  _.,. ,., , , ,.  -~
-   . .   .   ..'        '
-.   ___ .._       .         _ ..____.     _..       . 
-   / __\ |.|   ___. ._   _.| |.|  _ \    / \  . _ __ .
-. /./. . |.|  /._ \ | | | || | |.| | |  / _.\  | '_.\.
- / /     | | | (_) || |_| || |.| |_|.| / ___\ | | | |
- \/      |_| .\___/  \__,_||_|.|____/ /_/   \_\|_| |_|
-
-.   .      ..    .    +   ..     .    . ..    
-    .        .      .   .   .      ..     . ..   ..
-     ...     .   .       ..         .  ..      .
-  . .. .    +         . ..   .. ..     .  .       .
-    .   . ..     .    . . . ..   .     .
-.   ...   .          ____  .-------.. ____ ..   .+. .
-      .  .     _ --'"             .   .   ""`--.._
- . .   .  _.-'".   .        .    ..           .   "`-._
-      .-'"    .  . ..   ..            .         .    "`.
-    .'_ -""--   ___ .       .                .___. .--""- _` 
-...'.-' .            . ""`-- ..____.. --'"'"  ..    ..   .  `-.`.
-. |.' .   .             ..     ...         ..         .         ` |
-..``  . .      .           QUANTUM TUNNELING    ..  .             .''.
-|`.``    ... .        ..      .      .  . .  . . ..    .      ' '|
-|  ``.`--..____ .     .. .       .   .       .   . .____..--'.'. |
-|    ``--...___"`--.. . . ______________________... ...--'___ ..--'
- \.   .   ..    . .    ..     . . ..   . .    .        . . .   . /
-. ` _   .    . . .    .         .  .   ..      .         .  . _ '
-     `--...___ .     .                       .    .___...--''
-   .    .     ""`--.. ____________________...--'"'"
-
-   . ... .    ..  .   *           . .  *.   .  .             
- .. . .   ..     .  .     .  .___  ..     ____     .  . *
-        *     .   .. * . _____)___(   . / __ \   .      . ..
- . .. .  . *       ____/     . \______/ (  ) \____   ..
-    *   .    .  . /.  .\       /   \  . (  )./    \  .. *  .
-      .  .    * /      \     .\___/     \__//  ,   \  .
-    *     .   ./ .(  )  \ .   .    .   ..  /  ( )  \.  . 
-   ...   . . / .   \/   \  . *    . .     /.   \/    \.       .
-   .   *    /     .   . \  . .  .  * .   / ..  .      \  ...  .
-  .   .  . /              \             /.        *   .\    *
-         ./     *...  .    \ . .      ./  .  ..         \
-    </pre>
+    <div id="quantum-cloud-ascii">
+        <div class="ascii-slice-wrapper" data-orientation="axial">
+            <span class="slice-label">Axial View</span>
+            <pre class="ascii-slice"></pre>
+        </div>
+        <div class="ascii-slice-wrapper" data-orientation="coronal">
+            <span class="slice-label">Coronal View</span>
+            <pre class="ascii-slice"></pre>
+        </div>
+        <div class="ascii-slice-wrapper" data-orientation="sagittal">
+            <span class="slice-label">Sagittal View</span>
+            <pre class="ascii-slice"></pre>
+        </div>
+    </div>
 </div>
 
 <div id="tunneling-effect"></div>
@@ -167,12 +163,173 @@ button:hover {
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', (event) => {
+document.addEventListener('DOMContentLoaded', () => {
     const container = document.getElementById('quantum-cloud-container');
     const cloudAscii = document.getElementById('quantum-cloud-ascii');
+    const orientationWrappers = Array.from(cloudAscii.querySelectorAll('[data-orientation]'));
+    const tunnelingButton = document.querySelector('#controls button:nth-child(2)');
+
     let particles = [];
     let superpositionActive = false;
     let quantumState = 'tunneling';
+    let animationFrameId = null;
+
+    const gridSize = { x: 36, y: 24, z: 28 };
+    const totalVoxels = gridSize.x * gridSize.y * gridSize.z;
+    const baseNoise = new Float32Array(totalVoxels);
+    const quantumGrid = new Float32Array(totalVoxels);
+    const asciiChars = ' .:-=+*#%@';
+    const stepInterval = 120;
+
+    const sliceDescriptors = orientationWrappers.map((wrapper, index) => {
+        const orientationKey = wrapper.dataset.orientation;
+        const prettyName = orientationKey.charAt(0).toUpperCase() + orientationKey.slice(1);
+        const element = wrapper.querySelector('pre.ascii-slice');
+        const labelEl = wrapper.querySelector('.slice-label');
+
+        const descriptor = {
+            key: orientationKey,
+            prettyName,
+            element,
+            labelEl,
+            width: 0,
+            height: 0,
+            axisLength: 0,
+            sliceIndex: 0,
+            direction: 1,
+            cadence: stepInterval * (index + 1),
+            lastUpdate: 0,
+            map: () => 0
+        };
+
+        switch (orientationKey) {
+            case 'axial':
+                descriptor.width = gridSize.x;
+                descriptor.height = gridSize.y;
+                descriptor.axisLength = gridSize.z;
+                descriptor.sliceIndex = Math.floor(gridSize.z / 2);
+                descriptor.map = (x, y, slice) => getIndex(x, gridSize.y - 1 - y, slice);
+                descriptor.cadence = stepInterval;
+                break;
+            case 'coronal':
+                descriptor.width = gridSize.x;
+                descriptor.height = gridSize.z;
+                descriptor.axisLength = gridSize.y;
+                descriptor.sliceIndex = Math.floor(gridSize.y / 2);
+                descriptor.map = (x, y, slice) => getIndex(x, slice, gridSize.z - 1 - y);
+                descriptor.cadence = stepInterval * 2;
+                break;
+            case 'sagittal':
+                descriptor.width = gridSize.y;
+                descriptor.height = gridSize.z;
+                descriptor.axisLength = gridSize.x;
+                descriptor.sliceIndex = Math.floor(gridSize.x / 2);
+                descriptor.map = (x, y, slice) => getIndex(slice, gridSize.y - 1 - x, gridSize.z - 1 - y);
+                descriptor.cadence = stepInterval * 3;
+                break;
+            default:
+                descriptor.width = gridSize.x;
+                descriptor.height = gridSize.y;
+                descriptor.axisLength = gridSize.z;
+                descriptor.sliceIndex = Math.floor(gridSize.z / 2);
+                descriptor.map = (x, y, slice) => getIndex(x, y, slice);
+        }
+
+        descriptor.labelEl.textContent = `${descriptor.prettyName} View`;
+        return descriptor;
+    });
+
+    function getIndex(x, y, z) {
+        return x + gridSize.x * (y + gridSize.y * z);
+    }
+
+    function reseedQuantumField() {
+        for (let i = 0; i < totalVoxels; i++) {
+            baseNoise[i] = Math.random();
+        }
+    }
+
+    function resetSlicesToCenter() {
+        sliceDescriptors.forEach(descriptor => {
+            descriptor.sliceIndex = Math.floor(descriptor.axisLength / 2);
+            descriptor.direction = 1;
+            descriptor.lastUpdate = 0;
+        });
+    }
+
+    function buildSlice(descriptor) {
+        const lines = new Array(descriptor.height);
+        for (let y = 0; y < descriptor.height; y++) {
+            let line = '';
+            for (let x = 0; x < descriptor.width; x++) {
+                const value = quantumGrid[descriptor.map(x, y, descriptor.sliceIndex)];
+                const charIndex = Math.min(asciiChars.length - 1, Math.max(0, Math.floor(value * (asciiChars.length - 1))));
+                line += asciiChars[charIndex];
+            }
+            lines[y] = line;
+        }
+        return lines.join('\n');
+    }
+
+    function updateSliceLabel(descriptor) {
+        descriptor.labelEl.textContent = `${descriptor.prettyName} View · Slice ${descriptor.sliceIndex + 1}/${descriptor.axisLength}`;
+    }
+
+    function advanceSlice(descriptor) {
+        let nextSlice = descriptor.sliceIndex + descriptor.direction;
+        if (nextSlice >= descriptor.axisLength || nextSlice < 0) {
+            descriptor.direction *= -1;
+            nextSlice = descriptor.sliceIndex + descriptor.direction;
+        }
+        descriptor.sliceIndex = Math.min(Math.max(nextSlice, 0), descriptor.axisLength - 1);
+    }
+
+    let lastVolumeUpdate = 0;
+
+    function updateQuantumVolume(timestamp) {
+        const time = timestamp / 1000;
+        let idx = 0;
+        for (let z = 0; z < gridSize.z; z++) {
+            for (let y = 0; y < gridSize.y; y++) {
+                for (let x = 0; x < gridSize.x; x++, idx++) {
+                    const base = baseNoise[idx];
+                    const waveX = Math.sin((x + time) * 0.28);
+                    const waveY = Math.cos((y - time * 0.6) * 0.22);
+                    const waveZ = Math.sin((z * 0.35) + time * (superpositionActive ? 2.2 : 1.4));
+                    const harmonicCount = superpositionActive ? 4 : 3;
+                    const harmonics = (waveX + waveY + waveZ + (superpositionActive ? Math.sin(time + base * Math.PI * 2) : 0)) / harmonicCount;
+                    const noise = Math.sin(base * Math.PI * 2 + time * 0.5) * 0.5 + 0.5;
+                    const value = harmonics * 0.6 + noise * 0.4;
+                    quantumGrid[idx] = Math.min(1, Math.max(0, value));
+                }
+            }
+        }
+        lastVolumeUpdate = timestamp;
+    }
+
+    function renderOrientations(force = false, timestamp = performance.now()) {
+        if (force || timestamp - lastVolumeUpdate >= stepInterval) {
+            updateQuantumVolume(timestamp);
+        }
+
+        sliceDescriptors.forEach(descriptor => {
+            const due = force || (timestamp - descriptor.lastUpdate >= descriptor.cadence);
+            if (!due) {
+                return;
+            }
+            if (!force) {
+                advanceSlice(descriptor);
+            }
+            descriptor.element.textContent = buildSlice(descriptor);
+            updateSliceLabel(descriptor);
+            descriptor.lastUpdate = timestamp;
+        });
+    }
+
+    function animationLoop(timestamp) {
+        renderOrientations(false, timestamp);
+        animationFrameId = requestAnimationFrame(animationLoop);
+    }
 
     function createQuantumParticle() {
         const particle = document.createElement('div');
@@ -193,7 +350,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
 
     function animateQuantumParticles() {
         particles.forEach((p, i) => {
-            p.t += 0.02; // Increased speed for tunneling effect
+            p.t += 0.02;
             updateQuantumParticle(p.element, p.t);
             if (p.t > Math.PI * 4 || p.t < -Math.PI * 4) {
                 container.removeChild(p.element);
@@ -203,7 +360,12 @@ document.addEventListener('DOMContentLoaded', (event) => {
         requestAnimationFrame(animateQuantumParticles);
     }
 
-    for (let i = 0; i < 150; i++) { // Increased number of particles
+    reseedQuantumField();
+    resetSlicesToCenter();
+    renderOrientations(true);
+    animationFrameId = requestAnimationFrame(animationLoop);
+
+    for (let i = 0; i < 150; i++) {
         particles.push({ element: createQuantumParticle(), t: Math.random() * Math.PI * 4 });
     }
 
@@ -211,14 +373,25 @@ document.addEventListener('DOMContentLoaded', (event) => {
 
     window.toggleSuperposition = () => {
         superpositionActive = !superpositionActive;
-        cloudAscii.style.animation = superpositionActive ? 
-            'quantumTunneling 3s infinite alternate' : 
+        cloudAscii.style.animation = superpositionActive ?
+            'quantumTunneling 3s infinite alternate' :
             'quantumTunneling 5s infinite alternate';
+        renderOrientations(true);
     };
 
     window.initiateQuantumTunneling = () => {
-        // Already in tunneling state, but we could add additional effects here
-        alert("Quantum tunneling already in progress!");
+        if (quantumState === 'tunneling') {
+            reseedQuantumField();
+            renderOrientations(true);
+            alert('Quantum tunneling already in progress!');
+            return;
+        }
+        quantumState = 'tunneling';
+        tunnelingButton.disabled = true;
+        tunnelingButton.textContent = 'Tunneling in Progress';
+        reseedQuantumField();
+        resetSlicesToCenter();
+        renderOrientations(true);
     };
 
     window.collapseWaveFunction = () => {
@@ -231,15 +404,18 @@ document.addEventListener('DOMContentLoaded', (event) => {
                 p.element.style.transition = '';
             });
             quantumState = 'normal';
-            document.querySelector('button:nth-child(2)').disabled = false;
-            document.querySelector('button:nth-child(2)').textContent = "Initiate Quantum Tunneling";
+            if (tunnelingButton) {
+                tunnelingButton.disabled = false;
+                tunnelingButton.textContent = 'Initiate Quantum Tunneling';
+            }
+            resetSlicesToCenter();
+            renderOrientations(true);
         }, 500);
     };
 
-    // Additional tunneling effect
     setInterval(() => {
         particles.forEach(p => {
-            if (Math.random() < 0.1) { // 10% chance for each particle
+            if (Math.random() < 0.1) {
                 const randomX = (Math.random() - 0.5) * 300;
                 const randomY = (Math.random() - 0.5) * 300;
                 p.element.style.transform = `translate3d(${randomX}px, ${randomY}px, 0px)`;
