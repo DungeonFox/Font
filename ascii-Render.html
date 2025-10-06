@@ -17,13 +17,23 @@ body, html {
     align-items: center;
     perspective: 1000px;
 }
-#quantum-cloud-ascii {
+#quantum-cloud-views {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+}
+.quantum-orientation {
     font-size: 4px;
     line-height: 4px;
     white-space: pre;
     text-align: center;
     transform-style: preserve-3d;
     animation: quantumTunneling 5s infinite alternate;
+    display: none;
+}
+.quantum-orientation.active {
+    display: block;
 }
 @keyframes quantumTunneling {
     0% { transform: rotateX(0deg) rotateY(0deg) scale(1) skew(0deg); }
@@ -49,6 +59,15 @@ body, html {
     padding: 10px;
     border-radius: 10px;
 }
+#orientation-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 10px;
+}
+#orientation-buttons .orientation-toggle {
+    width: 100%;
+}
 button {
     background: #4b0082;
     border: none;
@@ -64,6 +83,9 @@ button {
     transition: background 0.3s;
 }
 button:hover {
+    background: #8a2be2;
+}
+.orientation-toggle.active {
     background: #8a2be2;
 }
 #tunneling-effect {
@@ -84,7 +106,11 @@ button:hover {
 </head>
 <body>
 <div id="quantum-cloud-container">
-    <pre id="quantum-cloud-ascii"></pre>
+    <div id="quantum-cloud-views">
+        <pre class="quantum-orientation active" data-orientation="axial"></pre>
+        <pre class="quantum-orientation" data-orientation="coronal"></pre>
+        <pre class="quantum-orientation" data-orientation="sagittal"></pre>
+    </div>
 </div>
 
 <div id="tunneling-effect"></div>
@@ -107,16 +133,33 @@ button:hover {
 </div>
 
 <div id="controls">
-    <button onclick="toggleSuperposition()">Toggle Superposition</button>
+    <button id="superposition-toggle" onclick="toggleSuperposition()">Toggle Superposition</button>
     <button onclick="initiateQuantumTunneling()">Reseed Life</button>
     <button onclick="collapseWaveFunction()">Collapse Wave Function</button>
+    <div id="orientation-buttons">
+        <button class="orientation-toggle active" data-orientation-toggle="axial">Axial View</button>
+        <button class="orientation-toggle" data-orientation-toggle="coronal">Coronal View</button>
+        <button class="orientation-toggle" data-orientation-toggle="sagittal">Sagittal View</button>
+    </div>
 </div>
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    const cloudAscii = document.getElementById('quantum-cloud-ascii');
     const controls = document.getElementById('controls');
-    const superpositionButton = controls.querySelector('button:nth-child(1)');
+    const superpositionButton = document.getElementById('superposition-toggle');
+    const orientationButtons = Array.from(controls.querySelectorAll('[data-orientation-toggle]'));
+    const orientationElements = {
+        axial: document.querySelector('[data-orientation="axial"]'),
+        coronal: document.querySelector('[data-orientation="coronal"]'),
+        sagittal: document.querySelector('[data-orientation="sagittal"]'),
+    };
+
+    const orientations = [
+        { key: 'axial', element: orientationElements.axial, render: renderAxial },
+        { key: 'coronal', element: orientationElements.coronal, render: renderCoronal },
+        { key: 'sagittal', element: orientationElements.sagittal, render: renderSagittal },
+    ];
+    let activeOrientation = orientations[0];
 
     const width = 80;
     const height = 40;
@@ -188,8 +231,8 @@ document.addEventListener('DOMContentLoaded', () => {
         bufferGrid = temp;
     }
 
-    function renderGrid() {
-        const lines = currentGrid.map((row, y) => {
+    function renderAxial() {
+        return currentGrid.map((row, y) => {
             return row.map((cell, x) => {
                 if (!islandMask[y][x]) {
                     return '.';
@@ -197,15 +240,84 @@ document.addEventListener('DOMContentLoaded', () => {
                 return cell ? '#' : ' ';
             }).join('');
         }).join('\n');
-
-        cloudAscii.textContent = lines;
     }
+
+    function renderCoronal() {
+        const lines = [];
+        for (let x = 0; x < width; x++) {
+            let line = '';
+            for (let y = 0; y < height; y++) {
+                if (!islandMask[y][x]) {
+                    line += '.';
+                    continue;
+                }
+                line += currentGrid[y][x] ? '#' : ' ';
+            }
+            lines.push(line);
+        }
+        return lines.join('\n');
+    }
+
+    function renderSagittal() {
+        const lines = [];
+        for (let x = 0; x < width; x++) {
+            let line = '';
+            for (let y = 0; y < height; y++) {
+                const mirrorX = width - 1 - x;
+                const maskActive = islandMask[y][x] || islandMask[y][mirrorX];
+                if (!maskActive) {
+                    line += '.';
+                    continue;
+                }
+                const alive = (islandMask[y][x] && currentGrid[y][x]) ||
+                    (islandMask[y][mirrorX] && currentGrid[y][mirrorX]);
+                line += alive ? '#' : ' ';
+            }
+            lines.push(line);
+        }
+        return lines.join('\n');
+    }
+
+    function renderOrientationViews() {
+        orientations.forEach((orientation) => {
+            orientation.element.textContent = orientation.render();
+            orientation.element.classList.toggle('active', orientation === activeOrientation);
+        });
+        updateOrientationButtons();
+    }
+
+    function setActiveOrientation(key) {
+        const nextOrientation = orientations.find((orientation) => orientation.key === key);
+        if (!nextOrientation) {
+            return;
+        }
+        activeOrientation = nextOrientation;
+        renderOrientationViews();
+    }
+
+    function updateOrientationButtons() {
+        orientationButtons.forEach((button) => {
+            button.classList.toggle('active', button.dataset.orientationToggle === activeOrientation.key);
+        });
+    }
+
+    function applyOrientationAnimation(animationValue) {
+        orientations.forEach(({ element }) => {
+            element.style.animation = animationValue;
+        });
+    }
+
+    orientationButtons.forEach((button) => {
+        button.addEventListener('click', () => {
+            setActiveOrientation(button.dataset.orientationToggle);
+        });
+    });
 
     function frameLoop(timestamp) {
         if (running) {
             if (!lastFrameTime || timestamp - lastFrameTime >= stepInterval) {
                 stepSimulation();
-                renderGrid();
+                renderOrientationViews();
                 lastFrameTime = timestamp;
             }
         }
@@ -213,14 +325,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     randomizeGrid();
-    renderGrid();
+    renderOrientationViews();
+    applyOrientationAnimation('quantumTunneling 5s infinite alternate');
     requestAnimationFrame(frameLoop);
 
     window.toggleSuperposition = () => {
         superpositionActive = !superpositionActive;
-        cloudAscii.style.animation = superpositionActive ?
+        applyOrientationAnimation(superpositionActive ?
             'quantumTunneling 3s infinite alternate' :
-            'quantumTunneling 5s infinite alternate';
+            'quantumTunneling 5s infinite alternate');
         superpositionButton.textContent = superpositionActive ? 'Deactivate Superposition' : 'Toggle Superposition';
     };
 
@@ -228,9 +341,9 @@ document.addEventListener('DOMContentLoaded', () => {
         randomizeGrid(0.5);
         running = true;
         superpositionActive = false;
-        cloudAscii.style.animation = 'quantumTunneling 5s infinite alternate';
+        applyOrientationAnimation('quantumTunneling 5s infinite alternate');
         superpositionButton.textContent = 'Toggle Superposition';
-        renderGrid();
+        renderOrientationViews();
     };
 
     window.collapseWaveFunction = () => {
@@ -241,8 +354,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 currentGrid[y][x] = false;
             }
         }
-        renderGrid();
-        cloudAscii.style.animation = 'quantumTunneling 5s infinite alternate';
+        renderOrientationViews();
+        applyOrientationAnimation('quantumTunneling 5s infinite alternate');
         superpositionButton.textContent = 'Toggle Superposition';
     };
 });
